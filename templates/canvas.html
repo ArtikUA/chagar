@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chagar</title>
+</head>
+<body onload="connect()">
+<canvas id="canvas" width="800" height="800" style="border:1px solid #000000;"></canvas>
+<script src="/static/js/fabric.js"></script>
+<script>
+    var ws;
+    var my_uuid = generateUUID();
+    var canvas = new fabric.Canvas('canvas');
+    var circles = {};
+
+    function connect() {
+
+        ws = new WebSocket('ws://' + window.location.host + '/chat/');
+
+        ws.onopen = function () {
+            json_object = {
+                action: 'start',
+                uuid: my_uuid
+            };
+            send(json_object);
+            log('open')
+        };
+
+        ws.onmessage = function (e) {
+            var data = JSON.parse(e.data);
+            var action = data['action'];
+
+            uuid = data['uuid'];
+
+            if (action == 'start') {
+                circles[uuid] = new fabric.Circle({
+                    left: 100,
+                    top: 100,
+                    radius: 20,
+                    fill: 'red'
+                });
+                canvas.add(circles[uuid]);
+                canvas.renderAll();
+            }
+
+            if (action == 'move') {
+                circles[uuid].set({
+                    left: data['x'],
+                    top: data['y']
+                });
+                canvas.renderAll();
+            }
+
+            log('received\t ' + e.data);
+        };
+
+        ws.onclose = function () {
+            log('closed');
+            connect();
+        };
+    }
+    function send(json_object) {
+        var message = JSON.stringify(json_object);
+        ws.send(message);
+        log('sent\t\t ' + message);
+
+    }
+
+    function microtime() {
+        return new Date().getTime() / 1000;
+    }
+
+    function log(message) {
+        //console.log(microtime(), message);
+    }
+
+
+    canvas.on('mouse:move', function (options) {
+
+        var pointer = canvas.getPointer(options.e);
+
+
+        var goal_x = pointer.x - 20;
+        var goal_y = pointer.y - 20;
+
+        send({
+            action: 'goal',
+            uuid: my_uuid,
+            goal_x: goal_x,
+            goal_y: goal_y
+        });
+    });
+
+
+    function generateUUID() {
+        var d = new Date().getTime();
+        if (window.performance && typeof window.performance.now === "function") {
+            d += performance.now(); //use high-precision timer if available
+        }
+        var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            var r = (d + Math.random() * 16) % 16 | 0;
+            d = Math.floor(d / 16);
+            return (c == 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+        return uuid;
+    }
+
+
+</script>
+</body>
+</html>

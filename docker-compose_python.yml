@@ -1,0 +1,5 @@
+docker_python:
+  dockerfile: Dockerfile
+  build: .
+  volumes:
+    - .:/code

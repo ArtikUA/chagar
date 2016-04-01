@@ -1,0 +1,29 @@
+redis:
+  restart: always
+  image: redis:latest
+  ports:
+    - "6379"
+base:
+  dockerfile: Dockerfile
+  build: .
+  volumes:
+    - .:/code
+
+migrate:
+  extends:
+    service: base
+  command: python manage.py migrate
+
+test:
+  extends:
+    service: base
+  command: python manage.py test
+
+dev:
+  extends:
+    service: base
+  command: python manage.py runserver 0.0.0.0:8001
+  ports:
+    - "8001"
+  links:
+    - redis
