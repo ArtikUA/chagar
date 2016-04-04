@@ -125,16 +125,13 @@ STATICFILES_DIRS = (
 
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "asgi_redis.RedisChannelLayer",
+        "BACKEND": "asgiref.inmemory.ChannelLayer",
         "ROUTING": "chagar.routing.channel_routing",
-        "CONFIG": {
-            "hosts": [("localhost", 6379)],
-        },
     },
 }
 
 logger = logging.getLogger('chat')
-logger.setLevel(logging.CRITICAL)
+logger.setLevel(logging.DEBUG)
 
 console_logger = logging.StreamHandler()
 console_logger.setLevel(logging.CRITICAL)

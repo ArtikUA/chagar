@@ -1,14 +1,13 @@
 import json
 import logging
+import random
 from time import sleep
 
-import redis
 from channels import Group
 
 logger = logging.getLogger('chat')
 
-r = redis.StrictRedis(host='localhost', port=6379, db=5)
-r.flushdb()
+coords = {}
 
 
 def ws_add(data):
@@ -36,20 +35,60 @@ def ws_disconnect(data):
     Group('chat').discard(data.reply_channel)
 
 
-def move_y(changes, goal_y, uuid, y):
-    if abs(goal_y - y) > 2:
-        next_y = y
-        if goal_y > y:
-            next_y = y + 1
-        elif goal_y < y:
-            next_y = y - 1
+def start(uuid):
+    new_circle(uuid)
 
-        r.set('%s:y' % uuid, next_y)
-        changes = True
-    return changes
+    load_circles()
+
+    while True:
+        goal_x = coords[uuid]['goal_x']
+        goal_y = coords[uuid]['goal_y']
+
+        x = coords[uuid]['x']
+        y = coords[uuid]['y']
+
+        move_circle(uuid, x, y, goal_x, goal_y)
+
+        sleep(0.01)
 
 
-def move_x(changes, goal_x, uuid, x):
+def change_circle(uuid):
+    data_send = {
+        'action': 'move',
+        'uuid': uuid,
+        'x': coords[uuid]['x'],
+        'y': coords[uuid]['y']
+    }
+    Group('chat').send({'text': json.dumps(data_send)})
+    logger.debug('change_circle %s' % uuid)
+
+
+def load_circles():
+    for key, value in coords.items():
+        data_send = {
+            'action': 'start',
+            'uuid': key,
+            'x': value['x'],
+            'y': value['y'],
+        }
+        Group('chat').send({'text': json.dumps(data_send)})
+
+
+def new_circle(uuid):
+    start_x = random.randint(0, 800)
+    start_y = random.randint(0, 800)
+
+    coords[uuid] = {
+        'goal_x': start_x,
+        'x': start_x,
+        'goal_y': start_y,
+        'y': start_y,
+    }
+
+
+def move_circle(uuid, x, y, goal_x, goal_y):
+    changes = False
+
     if abs(goal_x - x) > 2:
         next_x = x
         if goal_x > x:
@@ -57,74 +96,26 @@ def move_x(changes, goal_x, uuid, x):
         elif goal_x < x:
             next_x = x - 1
 
-        r.set('%s:x' % uuid, next_x)
+        coords[uuid]['x'] = next_x
         changes = True
-    return changes
 
+    if abs(goal_y - y) > 2:
+        next_y = y
+        if goal_y > y:
+            next_y = y + 1
+        elif goal_y < y:
+            next_y = y - 1
 
-def start(uuid):
-    r.set('%s:goal_x' % uuid, 100)
-    r.set('%s:x' % uuid, 100)
-    r.set('%s:goal_y' % uuid, 100)
-    r.set('%s:y' % uuid, 100)
+        coords[uuid]['y'] = next_y
+        changes = True
 
-    # r.hset(uuid, 'goal_x', 100)
-    # r.hset(uuid, 'x', 100)
-    # r.hset(uuid, 'goal_y', 100)
-    # r.hset(uuid, 'y', 100)
-
-    initial_hash = {
-        'goal_x': 100,
-        'x': 100,
-        'goal_y': 100,
-        'y': 100
-    }
-    r.hmset(uuid, initial_hash)
-
-    for key in r.keys('*'):
-        if len(key) == 36:
-            hmap = r.hgetall(key)
-
-            data_send = {
-                'action': 'start',
-                'uuid': key.decode('utf8'),
-                'x': int(hmap[b'x']),
-                'y': int(hmap[b'y'])
-            }
-            Group('chat').send({'text': json.dumps(data_send)})
-
-    while True:
-
-        goal_x = float(r.get('%s:goal_x' % uuid))
-        goal_y = float(r.get('%s:goal_y' % uuid))
-
-        x = float(r.get('%s:x' % uuid))
-        y = float(r.get('%s:y' % uuid))
-
-        changes = False
-
-        if not x:
-            r.set('%s:x' % uuid, goal_x)
-        else:
-            changes = move_x(changes, goal_x, uuid, x)
-            changes = move_y(changes, goal_y, uuid, y)
-
-        if changes:
-            data_send = {
-                'action': 'move',
-                'uuid': uuid,
-                'x': x,
-                'y': y
-            }
-
-            Group('chat').send({'text': json.dumps(data_send)})
-
-            logger.debug('frame %s' % uuid)
-        sleep(0.01)
+    if changes:
+        change_circle(uuid)
 
 
 def goal(data, uuid):
     goal_x = float(data['goal_x'])
     goal_y = float(data['goal_y'])
-    r.set('%s:goal_x' % uuid, goal_x)
-    r.set('%s:goal_y' % uuid, goal_y)
+
+    coords[uuid]['goal_x'] = goal_x
+    coords[uuid]['goal_y'] = goal_y
