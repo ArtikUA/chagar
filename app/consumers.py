@@ -2,6 +2,7 @@ import json
 import logging
 import random
 from time import sleep
+import math
 
 from channels import Group
 
@@ -86,27 +87,17 @@ def new_circle(uuid):
     }
 
 
-def move_circle(uuid, x, y, goal_x, goal_y):
+def move_circle(uuid, a_x, a_y, b_x, b_y):
     changes = False
+    v = 1
 
-    if abs(goal_x - x) > 2:
-        next_x = x
-        if goal_x > x:
-            next_x = x + 1
-        elif goal_x < x:
-            next_x = x - 1
+    if abs(b_x - a_x) > 2 or abs(b_y - a_y) > 2:
+        d = math.atan((b_y - a_y) / (b_x - a_x))
+        c_x = a_x - v * math.cos(d)
+        c_y = a_y - v * math.sin(d)
 
-        coords[uuid]['x'] = next_x
-        changes = True
-
-    if abs(goal_y - y) > 2:
-        next_y = y
-        if goal_y > y:
-            next_y = y + 1
-        elif goal_y < y:
-            next_y = y - 1
-
-        coords[uuid]['y'] = next_y
+        coords[uuid]['x'] = c_x
+        coords[uuid]['y'] = c_y
         changes = True
 
     if changes:
