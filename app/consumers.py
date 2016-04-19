@@ -78,6 +78,8 @@ def load_circles():
 def new_circle(uuid):
     start_x = random.randint(0, 800)
     start_y = random.randint(0, 800)
+    start_x = 400
+    start_y = 400
 
     coords[uuid] = {
         'goal_x': start_x,
@@ -87,14 +89,21 @@ def new_circle(uuid):
     }
 
 
+def positive(n):
+    if n > 0:
+        return 1
+    else:
+        return -1
+
+
 def move_circle(uuid, a_x, a_y, b_x, b_y):
     changes = False
-    v = 1
+    v = 1 if b_x > a_x else -1
 
     if abs(b_x - a_x) > 2 or abs(b_y - a_y) > 2:
-        d = math.atan((b_y - a_y) / (b_x - a_x))
-        c_x = a_x - v * math.cos(d)
-        c_y = a_y - v * math.sin(d)
+        d = math.atan((a_y - b_y) / (a_x - b_x))
+        c_x = a_x + v * math.cos(d)
+        c_y = a_y + v * math.sin(d)
 
         coords[uuid]['x'] = c_x
         coords[uuid]['y'] = c_y
