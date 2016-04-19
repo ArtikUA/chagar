@@ -89,13 +89,6 @@ def new_circle(uuid):
     }
 
 
-def positive(n):
-    if n > 0:
-        return 1
-    else:
-        return -1
-
-
 def move_circle(uuid, a_x, a_y, b_x, b_y):
     changes = False
     v = 1 if b_x > a_x else -1
